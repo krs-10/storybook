@@ -1,5 +1,6 @@
 import React from 'react';
 import ThemeProvider from '@emotion/provider';
+import styled from '@emotion/styled';
 import { configure, addDecorator } from '@storybook/react';
 import { themes } from '@storybook/components';
 import { withOptions } from '@storybook/addon-options';
@@ -15,10 +16,19 @@ addHeadWarning('Dotenv file not loaded', 'dotenv-file-not-loaded');
 addDecorator(
   withOptions({
     hierarchySeparator: /\/|\./,
-    hierarchyRootSeparator: /\|/,
-    theme: themes.dark,
+    hierarchyRootSeparator: '|',
+    // theme: themes.dark,
   })
 );
+
+const Reset = styled.div(({ theme }) => ({
+  fontFamily: theme.mainTextFace,
+  color: theme.mainTextColor,
+  WebkitFontSmoothing: 'antialiased',
+  fontSize: theme.mainTextSize,
+}));
+
+addDecorator((story, { kind }) => (kind === 'Core|Errors' ? story() : <Reset>{story()}</Reset>));
 
 addDecorator(
   (story, { kind }) =>

@@ -1,41 +1,14 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { RoutedLink, monoFonts } from '@storybook/components';
-import jsx from 'react-syntax-highlighter/languages/prism/jsx';
-import { darcula } from 'react-syntax-highlighter/styles/prism';
-import SyntaxHighlighter, { registerLanguage } from 'react-syntax-highlighter/prism-light';
+import { RoutedLink, SyntaxHighlighter } from '@storybook/components';
+
 import { createElement } from 'react-syntax-highlighter';
 import { EVENT_ID } from './events';
-
-// TODO: take from theme
-const highlighterTheme = {
-  ...darcula,
-  'pre[class*="language-"]': {
-    ...darcula['pre[class*="language-"]'],
-    margin: 'auto',
-    width: 'auto',
-    height: 'auto',
-    minHeight: '100%',
-    overflow: 'hidden',
-    boxSizing: 'border-box',
-    display: 'flex',
-    fontFamily: monoFonts.fontFamily,
-    fontSize: 'inherit',
-  },
-  'code[class*="language-"]': {
-    ...darcula['code[class*="language-"]'],
-    margin: 0,
-    fontFamily: 'inherit',
-  },
-};
-
-registerLanguage('jsx', jsx);
 
 const styles = {
   story: {
     display: 'block',
     textDecoration: 'none',
-    color: darcula['code[class*="language-"]'].color,
   },
   selectedStory: {
     backgroundColor: 'rgba(255, 242, 60, 0.2)',
@@ -59,21 +32,13 @@ const getLocationKeys = locationsMap =>
     : [];
 
 export default class StoryPanel extends Component {
-  state = { source: '// Here will be dragons 🐉' };
+  state = { source: 'loading source...' };
 
   componentDidMount() {
+    this.mounted = true;
     const { channel } = this.props;
 
-    channel.on(EVENT_ID, ({ source, currentLocation, locationsMap }) => {
-      const locationsKeys = getLocationKeys(locationsMap);
-
-      this.setState({
-        source,
-        currentLocation,
-        locationsMap,
-        locationsKeys,
-      });
-    });
+    channel.on(EVENT_ID, this.listener);
   }
 
   componentDidUpdate() {
@@ -82,8 +47,25 @@ export default class StoryPanel extends Component {
     }
   }
 
+  componentWillUnmount() {
+    const { channel } = this.props;
+
+    channel.removeListener(EVENT_ID, this.listener);
+  }
+
   setSelectedStoryRef = ref => {
     this.selectedStoryRef = ref;
+  };
+
+  listener = ({ source, currentLocation, locationsMap }) => {
+    const locationsKeys = getLocationKeys(locationsMap);
+
+    this.setState({
+      source,
+      currentLocation,
+      locationsMap,
+      locationsKeys,
+    });
   };
 
   clickOnStory = (kind, story) => {
@@ -166,11 +148,20 @@ export default class StoryPanel extends Component {
   lineRenderer = ({ rows, stylesheet, useInlineStyles }) => {
     const { locationsMap, locationsKeys } = this.state;
 
+    // because of the usage of lineRenderer, all lines will be wrapped in a span
+    // these spans will recieve all classes on them for some reason
+    // which makes colours casecade incorrectly
+    // this removed that list of classnames
+    const myrows = rows.map(({ properties, ...rest }) => ({
+      ...rest,
+      properties: { className: [] },
+    }));
+
     if (!locationsMap || !locationsKeys.length) {
-      return this.createPart(rows, stylesheet, useInlineStyles);
+      return this.createPart(myrows, stylesheet, useInlineStyles);
     }
 
-    const parts = this.createParts(rows, stylesheet, useInlineStyles);
+    const parts = this.createParts(myrows, stylesheet, useInlineStyles);
 
     return <span>{parts}</span>;
   };
@@ -183,9 +174,9 @@ export default class StoryPanel extends Component {
       <SyntaxHighlighter
         language="jsx"
         showLineNumbers="true"
-        style={highlighterTheme}
         renderer={this.lineRenderer}
-        customStyle={styles.panel}
+        copyable={false}
+        padded
       >
         {source}
       </SyntaxHighlighter>

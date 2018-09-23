@@ -8,20 +8,6 @@ export function init() {
   // NOTE nothing to do here
 }
 
-function regExpStringify(exp) {
-  if (typeof exp === 'string') return exp;
-  if (Object.prototype.toString.call(exp) === '[object RegExp]') return exp.source;
-  return null;
-}
-
-function hasOwnProp(object, propName) {
-  return Object.prototype.hasOwnProperty.call(object, propName);
-}
-
-function withRegexProp(object, propName) {
-  return hasOwnProp(object, propName) ? { [propName]: regExpStringify(object[propName]) } : {};
-}
-
 function emitOptions(options) {
   const channel = addons.getChannel();
   if (!channel) {
@@ -33,11 +19,7 @@ function emitOptions(options) {
   // since 'undefined' and 'null' are the valid values we don't want to
   // override the hierarchySeparator or hierarchyRootSeparator if the prop is missing
   channel.emit(EVENT_ID, {
-    options: {
-      ...options,
-      ...withRegexProp(options, 'hierarchySeparator'),
-      ...withRegexProp(options, 'hierarchyRootSeparator'),
-    },
+    options,
   });
 }
 
@@ -54,12 +36,36 @@ export const withOptions = makeDecorator({
   parameterName: 'options',
   skipIfNoParametersOrOptions: false,
   wrapper: (getStory, context, { options: inputOptions, parameters }) => {
-    emitOptions({
+    // do not send hierachy related options over the channel
+    const { hierarchySeparator, hierarchyRootSeparator, ...change } = {
       ...globalOptions,
       ...inputOptions,
       ...parameters,
-    });
+    };
 
-    return getStory(context);
+    if (Object.keys(change).length) {
+      emitOptions({
+        ...globalOptions,
+        ...inputOptions,
+        ...parameters,
+      });
+    }
+
+    // MUTATION !
+    // eslint-disable-next-line no-param-reassign
+    context.options = {
+      ...globalOptions,
+      ...inputOptions,
+      ...parameters,
+    };
+
+    return getStory({
+      ...context,
+      options: {
+        ...globalOptions,
+        ...inputOptions,
+        ...parameters,
+      },
+    });
   },
 });

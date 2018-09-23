@@ -1,8 +1,9 @@
 import { document } from 'global';
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-
 import styled from '@emotion/styled';
+
+import { SyntaxHighlighter, Heading } from '@storybook/components';
 
 import Events from './constants';
 import Swatch from './Swatch';
@@ -10,18 +11,6 @@ import Swatch from './Swatch';
 const Wrapper = styled.div({
   padding: 20,
 });
-
-const Title = styled.h5({
-  fontSize: 16,
-});
-
-const Pre = styled.pre(({ theme }) => ({
-  padding: '30px',
-  display: 'block',
-  background: theme.fillColor,
-  marginTop: '15px',
-  lineHeight: '1.75em',
-}));
 
 const List = styled.div({
   display: 'inline-block',
@@ -32,7 +21,7 @@ const Item = styled.div({
   padding: 5,
 });
 
-const storybookIframe = 'storybook-preview-iframe';
+const storybookIframe = 'storybook-preview-background';
 const style = {
   iframe: {
     transition: 'background 0.25s ease-in-out',
@@ -58,16 +47,16 @@ storiesOf('First Component', module)
 
 const Instructions = () => (
   <Wrapper>
-    <Title>Setup Instructions</Title>
+    <Heading>Setup Instructions</Heading>
     <p>
       Please add the background decorator definition to your story. The background decorate accepts
       an array of items, which should include a name for your color (preferably the css class name)
       and the corresponding color / image value.
     </p>
     <p>Below is an example of how to add the background decorator to your story definition.</p>
-    <Pre>
-      <code>{instructionsHtml}</code>
-    </Pre>
+    <SyntaxHighlighter language="jsx" copyable bordered>
+      {instructionsHtml}
+    </SyntaxHighlighter>
   </Wrapper>
 );
 
@@ -80,30 +69,26 @@ export default class BackgroundPanel extends Component {
 
   componentDidMount() {
     const { api, channel } = this.props;
-    this.iframe = document.getElementById(storybookIframe);
-
-    if (!this.iframe) {
-      throw new Error('Cannot find Storybook iframe');
-    }
-
-    Object.keys(style.iframe).forEach(prop => {
-      this.iframe.style[prop] = style.iframe[prop];
-    });
-
     channel.on(Events.SET, data => {
+      this.iframe = document.getElementById(storybookIframe);
+
+      if (!this.iframe) {
+        return;
+        // throw new Error('Cannot find Storybook iframe');
+      }
+
+      Object.keys(style.iframe).forEach(prop => {
+        this.iframe.style[prop] = style.iframe[prop];
+      });
+
       const backgrounds = [...data];
 
       this.setState({ backgrounds });
       const current = api.getQueryParam('background');
       const defaultOrFirst = backgrounds.find(x => x.default) || backgrounds[0];
 
-      // debugger;
-
-      const foundBackground =
-        current && backgrounds.find(bg => bg.name === decodeURI(current) || bg.value === current);
-
-      if (foundBackground) {
-        this.updateIframe(foundBackground.value);
+      if (current && backgrounds.find(bg => bg.value === current)) {
+        this.updateIframe(current);
       } else if (defaultOrFirst) {
         this.updateIframe(defaultOrFirst.value);
         api.setQueryParams({ background: defaultOrFirst.value });
@@ -111,6 +96,10 @@ export default class BackgroundPanel extends Component {
     });
 
     channel.on(Events.UNSET, () => {
+      if (!this.iframe) {
+        return;
+        // throw new Error('Cannot find Storybook iframe');
+      }
       this.setState({ backgrounds: [] });
       this.updateIframe('none');
     });

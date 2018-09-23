@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import PropTypes from 'prop-types';
 
 import styled from '@emotion/styled';
@@ -19,7 +19,7 @@ const Violations = styled.span(({ theme }) => ({
   color: theme.failColor,
 }));
 
-class Panel extends Component {
+class A11YPanel extends Component {
   static propTypes = {
     active: PropTypes.bool.isRequired,
     channel: PropTypes.shape({
@@ -78,7 +78,7 @@ class Panel extends Component {
     const { active } = this.props;
 
     return active ? (
-      <div>
+      <Fragment>
         <Tabs
           tabs={[
             {
@@ -94,9 +94,9 @@ class Panel extends Component {
         <ActionBar>
           <ActionButton onClick={this.requestCheck}>RERUN TEST</ActionButton>
         </ActionBar>
-      </div>
+      </Fragment>
     ) : null;
   }
 }
 
-export default Panel;
+export default A11YPanel;

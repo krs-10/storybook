@@ -1,8 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import styled from '@emotion/styled';
 import addons from '@storybook/addons';
 
-import styled from '@emotion/styled';
+import { Placeholder } from '@storybook/components';
+import { ADDON_ID, PANEL_ID } from './shared';
 
 const Panel = styled.div({
   padding: 10,
@@ -10,38 +12,36 @@ const Panel = styled.div({
   width: '100%',
 });
 
-export class Notes extends React.Component {
-  constructor(...args) {
-    super(...args);
-    this.state = { text: '' };
-    this.onAddNotes = this.onAddNotes.bind(this);
-  }
+export class NotesPanel extends React.Component {
+  state = {
+    text: '',
+  };
 
   componentDidMount() {
+    this.mounted = true;
     const { channel, api } = this.props;
-    // Listen to the notes and render it.
-    channel.on('storybook/notes/add_notes', this.onAddNotes);
 
     // Clear the current notes on every story change.
     this.stopListeningOnStory = api.onStory(() => {
-      this.onAddNotes('');
+      const { text } = this.state;
+      if (this.mounted && text !== '') {
+        this.onAddNotes('');
+      }
     });
+    channel.on('storybook/notes/add_notes', this.onAddNotes);
   }
 
-  // This is some cleanup tasks when the Notes panel is unmounting.
   componentWillUnmount() {
-    if (this.stopListeningOnStory) {
-      this.stopListeningOnStory();
-    }
-
-    this.unmounted = true;
+    this.mounted = false;
     const { channel } = this.props;
+
+    this.stopListeningOnStory();
     channel.removeListener('storybook/notes/add_notes', this.onAddNotes);
   }
 
-  onAddNotes(text) {
+  onAddNotes = text => {
     this.setState({ text });
-  }
+  };
 
   render() {
     const { active } = this.props;
@@ -53,16 +53,22 @@ export class Notes extends React.Component {
           .replace(/\n/g, '<br />')
       : '';
 
-    return active ? (
+    if (!active) {
+      return null;
+    }
+
+    return textAfterFormatted ? (
       <Panel
         className="addon-notes-container"
         dangerouslySetInnerHTML={{ __html: textAfterFormatted }}
       />
-    ) : null;
+    ) : (
+      <Placeholder>There is no info/note</Placeholder>
+    );
   }
 }
 
-Notes.propTypes = {
+NotesPanel.propTypes = {
   active: PropTypes.bool.isRequired,
   channel: PropTypes.shape({
     on: PropTypes.func,
@@ -76,11 +82,25 @@ Notes.propTypes = {
   }).isRequired,
 };
 
-addons.register('storybook/notes', api => {
+addons.register(ADDON_ID, api => {
   const channel = addons.getChannel();
-  addons.addPanel('storybook/notes/panel', {
-    title: 'Notes',
-    // eslint-disable-next-line react/prop-types
-    render: ({ active }) => <Notes channel={channel} api={api} active={active} />,
-  });
+
+  // eslint-disable-next-line react/prop-types
+  const render = ({ active }) => <NotesPanel channel={channel} api={api} active={active} />;
+  const title = 'Notes';
+  const type = 'tab';
+
+  if (addons.addMain) {
+    addons.addMain(PANEL_ID, {
+      type,
+      title,
+      route: '/info/',
+      render,
+    });
+  } else {
+    addons.addPanel(PANEL_ID, {
+      title,
+      render,
+    });
+  }
 });

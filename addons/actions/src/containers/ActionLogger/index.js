@@ -1,8 +1,6 @@
-/* eslint-disable no-underscore-dangle */
-
 import React from 'react';
 import PropTypes from 'prop-types';
-import deepEqual from 'deep-equal';
+import deepEqual from 'fast-deep-equal';
 import { CYCLIC_KEY, retrocycle } from '../../lib';
 import { isObject } from '../../lib/util';
 
@@ -10,37 +8,33 @@ import ActionLoggerComponent from '../../components/ActionLogger';
 import { EVENT_ID } from '../..';
 
 export default class ActionLogger extends React.Component {
-  constructor(props, ...args) {
-    super(props, ...args);
-    this.state = { actions: [] };
-    this._actionListener = action => this.addAction(action);
-    this._storyChangeListener = () => this.handleStoryChange();
-  }
+  state = { actions: [] };
 
   componentDidMount() {
+    this.mounted = true;
     const { channel, api } = this.props;
 
-    channel.on(EVENT_ID, this._actionListener);
-    this.stopListeningOnStory = api.onStory(this._storyChangeListener);
+    channel.on(EVENT_ID, this.addAction);
+    this.stopListeningOnStory = api.onStory(this.handleStoryChange);
   }
 
   componentWillUnmount() {
+    this.mounted = false;
     const { channel } = this.props;
 
-    channel.removeListener(EVENT_ID, this._actionListener);
-    if (this.stopListeningOnStory) {
-      this.stopListeningOnStory();
-    }
+    channel.removeListener(EVENT_ID, this.addAction);
+
+    this.stopListeningOnStory();
   }
 
-  handleStoryChange() {
+  handleStoryChange = () => {
     const { actions } = this.state;
     if (actions.length > 0 && actions[0].options.clearOnStoryChange) {
       this.clearActions();
     }
-  }
+  };
 
-  addAction(action) {
+  addAction = action => {
     let { actions = [] } = this.state;
     actions = [...actions];
 
@@ -55,18 +49,18 @@ export default class ActionLogger extends React.Component {
       actions.unshift(action);
     }
     this.setState({ actions: actions.slice(0, action.options.limit) });
-  }
+  };
 
-  clearActions() {
+  clearActions = () => {
     this.setState({ actions: [] });
-  }
+  };
 
   render() {
     const { actions = [] } = this.state;
     const { active } = this.props;
     const props = {
       actions,
-      onClear: () => this.clearActions(),
+      onClear: this.clearActions,
     };
     return active ? <ActionLoggerComponent {...props} /> : null;
   }

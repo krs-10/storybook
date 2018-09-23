@@ -16,12 +16,19 @@ storiesOf('Core|Parameters', module)
   .add(
     'passed to story',
     ({ parameters: { fileName, ...parameters } }) => (
-      <div>Parameters are {JSON.stringify(parameters)}</div>
+      <div>
+        <p>Parameters are</p>
+        <pre>{JSON.stringify(parameters, null, 2)}</pre>
+      </div>
     ),
     {
       storyParameter,
     }
   );
+
+storiesOf('Core|Parameters', module)
+  .addDecorator(fn => fn({ test: 'awesome' }))
+  .add('adds data to storyFn', (...params) => <pre>{JSON.stringify(params, null, 2)}</pre>);
 
 let timesClicked = 0;
 const increment = () => {
